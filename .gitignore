@@ -1,0 +1,7 @@
+*.xlsx
+*.csv
+*.geojson
+*.shp
+*.dbf
+__pycache__/
+.venv/
