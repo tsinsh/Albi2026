@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boussole Albi 2026</title>
+    <title>Boussole Stratégique 2027 - Albi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -14,6 +14,34 @@
         .nav-tabs .nav-link.active { font-weight: bold; color: #dc3545; }
         .nav-tabs .nav-link { color: #6c757d; cursor: pointer; }
         #contenu-apropos { height: 72vh; overflow-y: auto; border-radius: 0 0 8px 8px; }
+        
+        /* Styles spécifiques pour la légende (échelle de gradation) */
+        .info.legend {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+            line-height: 1.6em;
+            color: #333;
+            font-size: 0.85rem;
+            min-width: 150px;
+        }
+        .info.legend h6 {
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 4px;
+        }
+        .info.legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            border: 1px solid #999;
+            opacity: 0.85;
+        }
+        .cursor-pointer { cursor: pointer; }
     </style>
 </head>
 <body class="bg-light">
@@ -21,7 +49,7 @@
 <div class="container-fluid mt-3">
     <div class="row mb-3">
         <div class="col-12 text-center">
-            <h2 class="text-danger fw-bold">🗳️ Boussole Électorale & Matérialiste - Albi</h2>
+            <h2 class="text-danger fw-bold">🗳️ Boussole Électorale & Matérialiste - Objectif 2027</h2>
         </div>
     </div>
 
@@ -31,11 +59,16 @@
                 <div class="card mb-3 shadow-sm">
                     <div class="card-body">
                         <h5 class="card-title fw-bold">🔍 Chercher une adresse</h5>
-                        <p class="text-muted small mb-2">Trouve le bureau de vote et ses données.</p>
-                        <div class="input-group mb-2">
-                            <input type="text" id="adresse-input" class="form-control form-control-sm" placeholder="Ex: 5 Place du Vigan">
-                            <button class="btn btn-sm btn-danger" onclick="chercherAdresse()">Go</button>
+                        <p class="text-muted small mb-2">Trouve les données (Bureau ou Carreau) selon le mode actif.</p>
+                        
+                        <div class="position-relative mb-2">
+                            <div class="input-group">
+                                <input type="text" id="adresse-input" class="form-control form-control-sm" placeholder="Ex: 5 Place du Vigan" autocomplete="off">
+                                <button class="btn btn-sm btn-danger" onclick="lancerRechercheManuelle()">Go</button>
+                            </div>
+                            <div id="suggestions-adresse" class="list-group position-absolute w-100 shadow-sm" style="z-index: 1000; display: none; top: 100%;"></div>
                         </div>
+                        
                         <div id="resultat-adresse" class="text-muted small fw-medium"></div>
                     </div>
                 </div>
@@ -43,7 +76,7 @@
                 <div id="resultats-complets" style="display: none;">
                     <div class="card shadow-sm">
                         <div class="card-header bg-danger text-white p-2">
-                            <h6 class="m-0 fw-bold text-center" id="nom-bureau">Bureau X</h6>
+                            <h6 class="m-0 fw-bold text-center" id="nom-bureau">Résultats</h6>
                         </div>
                         <div class="card-body p-0" style="max-height: 52vh; overflow-y: auto;">
                             <table class="table table-sm table-striped table-bordered m-0 table-section">
@@ -55,16 +88,16 @@
             </div>
             
             <div id="panneau-info-carreaux" style="display: none;">
-                <div class="alert alert-info shadow-sm">
+                <div class="alert alert-info shadow-sm mt-3">
                     <h5 class="fw-bold">📦 Carreaux 200m</h5>
-                    <p class="small mb-0">Données INSEE Filosofi 2017 à la maille 200m×200m. Visualisation fine pour analyser la sociologie et la pauvreté d'un quartier indépendamment du découpage électoral.</p>
+                    <p class="small mb-0">Données <strong>INSEE Filosofi 2021</strong> à la maille 200m×200m. Visualisation fine pour analyser la population et la richesse d'un quartier indépendamment du découpage électoral. Idéal pour le ciblage militant.</p>
                 </div>
             </div>
 
             <div id="panneau-info-apropos" style="display: none;">
-                <div class="alert alert-danger shadow-sm">
+                <div class="alert alert-danger shadow-sm mt-3">
                     <h5 class="fw-bold">ℹ️ À propos</h5>
-                    <p class="small mb-0">Retrouvez ici la méthodologie complète, les sources des données et le mode de calcul des gisements électoraux.</p>
+                    <p class="small mb-0">Retrouvez ici la méthodologie complète, les sources des données détaillées et le mode d'emploi stratégique pour les campagnes à venir.</p>
                 </div>
             </div>
             
@@ -81,34 +114,44 @@
                     <a class="nav-link" id="tab-carreaux" onclick="changerMode('carreaux')">📦 Carreaux 200m</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="tab-apropos" onclick="changerMode('apropos')">ℹ️ À propos</a>
+                    <a class="nav-link" id="tab-apropos" onclick="changerMode('apropos')">ℹ️ À propos & Stratégie</a>
                 </li>
             </ul>
 
             <div id="conteneur-controles" class="bg-white p-2 border border-top-0">
                 <select id="select-indicateur-bureaux" class="form-select form-select-sm shadow-sm" onchange="dessinerCarte()">
-                    <optgroup label="⚙️ Analyse de classe">
-                        <option value="Taux_Ouvriers_Employes">⚙️ Taux Ouvriers & Employés (%)</option>
-                        <option value="Taux_Cadres_Sup">🎓 Taux Cadres supérieurs (%)</option>
-                        <option value="Taux_Independants">🏪 Taux Artisans/Indépendants (%)</option>
+                    
+                    <optgroup label="🌍 Socle National (Euro & Prés.)">
+                        <option value="Voix_JLM_2022">🗳️ Voix JLM 2022 (Volume brut)</option>
+                        <option value="Voix_NFP_2024">🗳️ Voix NFP 2024 (Volume brut)</option>
+                        <option value="Part_Aubry_Euro24">🇪🇺 Part Manon Aubry (Euro 2024) (%)</option>
                     </optgroup>
-                    <optgroup label="🚪 Mobilisation / Abstention">
+
+                    <optgroup label="🚪 Mobilisation / Abstention (Crucial 2027)">
                         <option value="Nombre_Abstentionnistes">🚪 Nombre d'abstentionnistes (Volume)</option>
                         <option value="Taux_Rassemblement_Gauche">🚨 Taux de Rassemblement Gauche (%)</option>
                     </optgroup>
+
                     <optgroup label="🔥 Gisements électoraux">
                         <option value="Ecart_JLM_Local">🔥 Gisement JLM 2022 (Volume brut)</option>
                         <option value="Ecart_NFP_Local">🔥 Gisement NFP 2024 (Volume brut)</option>
                         <option value="Ecart_JLM_Norm">📐 Gisement JLM 2022 (Normalisé)</option>
                         <option value="Ecart_NFP_Norm">📐 Gisement NFP 2024 (Normalisé)</option>
                     </optgroup>
+
+                    <optgroup label="⚙️ Analyse de classe">
+                        <option value="Taux_Ouvriers_Employes">⚙️ Taux Ouvriers & Employés (%)</option>
+                        <option value="Taux_Cadres_Sup">🎓 Taux Cadres supérieurs (%)</option>
+                        <option value="Taux_Independants">🏪 Taux Artisans/Indépendants (%)</option>
+                    </optgroup>
+                    
                     <optgroup label="👥 Ciblage démographique">
                         <option value="Taux_Jeunes_18_39">👥 Taux de jeunes (18-39 ans) (%)</option>
                         <option value="Taux_Familles_Monoparentales">👥 Taux de familles monoparentales (%)</option>
                         <option value="Taux_Locataires_Prives">👥 Taux de locataires privés (%)</option>
                     </optgroup>
                     
-                    <optgroup label="🗳️ Résultats 1er Tour (%)">
+                    <optgroup label="🗳️ Résultats 1er Tour Municipales (%)">
                         <option value="Part_Ferrand_T1">1er Tour - Ferrand-Lefranc (%)</option>
                         <option value="Part_Suarez_T1">1er Tour - Suarez (PS) (%)</option>
                         <option value="Part_Guiraud_T1">1er Tour - Guiraud-Chaumeil (%)</option>
@@ -116,7 +159,7 @@
                         <option value="Part_At_T1">1er Tour - At (%)</option>
                     </optgroup>
 
-                    <optgroup label="🗳️ Résultats 2nd Tour (%)">
+                    <optgroup label="🗳️ Résultats 2nd Tour Municipales (%)">
                         <option value="Part_Ferrand_T2">2nd Tour - Ferrand-Lefranc (%)</option>
                         <option value="Part_Guiraud_T2">2nd Tour - Guiraud-Chaumeil (%)</option>
                         <option value="Part_Cabrolier_T2">2nd Tour - Cabrolier (RN) (%)</option>
@@ -125,12 +168,12 @@
                 </select>
 
                 <select id="select-indicateur-carreaux" class="form-select form-select-sm shadow-sm" style="display: none;" onchange="dessinerCarte()">
-                    <option value="Taux_Pauvrete">🔴 Taux de pauvreté (%)</option>
-                    <option value="Taux_Logement_Social">🏠 Taux logement social (%)</option>
-                    <option value="Taux_Proprietaires">🔑 Taux propriétaires (%)</option>
-                    <option value="Taux_Familles_Mono">👨‍👧 Taux familles monoparentales (%)</option>
-                    <option value="Taux_Jeunes_18_39">👥 Taux jeunes 18-39 ans (%)</option>
-                    <option value="Taux_Locataires_Prives">📋 Taux locataires privés (%)</option>
+                    <option value="ind_snv">💰 Niveau de vie médian (2021) (€)</option>
+                    <option value="men_pauv">🔴 Part de ménages pauvres (%)</option>
+                    <option value="log_soc">🏠 Part de logements sociaux (%)</option>
+                    <option value="men_prop">🔑 Part de propriétaires (%)</option>
+                    <option value="men_fmp">👨‍👧 Part de fam. monoparentales (%)</option>
+                    <option value="ind">👥 Population du carreau (2021)</option>
                 </select>
             </div>
             
@@ -139,32 +182,75 @@
             <div id="contenu-apropos" class="bg-white p-4 border border-top-0 shadow-sm" style="display: none;">
                 <h3 class="text-danger mb-4">À propos · Boussole Électorale & Matérialiste</h3>
                 
-                <p>Ce document a pour objectif d'expliciter chaque indicateur présent dans le tableau de bord, ainsi que l'origine des données exploitées. Il est crucial de s'appuyer sur des chiffres officiels et de comprendre comment la carte est construite.</p>
+                <p>Ce document a pour objectif d'expliciter chaque indicateur présent dans le tableau de bord. La transparence est le maître-mot : il est crucial de s'appuyer sur des chiffres officiels certifiés par l'État pour construire une stratégie rationnelle.</p>
 
-                <h5 class="fw-bold mt-4">📦 D'où proviennent nos données ?</h5>
+                <h5 class="fw-bold mt-4">📦 Origine exhaustive des données</h5>
                 <hr>
-                <p>Cette carte interactive croise trois grandes sources de données publiques officielles:</p>
+                <p>L'exactitude de cette carte repose sur le croisement de trois sources de données publiques en <em>Open Data</em> :</p>
                 <ul class="list-unstyled">
-                    <li class="mb-2"><strong>Ministère de l'Intérieur :</strong> Les résultats électoraux et l'abstention sont extraits à l'échelle la plus fine possible : le bureau de vote.</li>
-                    <li class="mb-2"><strong>INSEE (Recensement) :</strong> Les données sociologiques sont issues des quartiers IRIS de l'INSEE, projetées sur nos bureaux de vote.</li>
-                    <li class="mb-2"><strong>Contours des bureaux de vote :</strong> Les tracés sont issus d'une reconstruction mathématique (diagrammes de Voronoï) publiée par Etalab à partir du Répertoire Électoral Unique (REU).</li>
+                    <li class="mb-3"><strong>1. Les Résultats Électoraux (Ministère de l'Intérieur) :</strong> Extraits du portail data.gouv.fr, ces fichiers recensent les résultats définitifs de chaque scrutin (Présidentielles 2022, Législatives 2024, etc.) à la maille la plus fine existante : le bureau de vote. Les données d'abstention brute y sont également puisées.</li>
+                    
+                    <li class="mb-3"><strong>2. La Sociologie Fine (INSEE - Filosofi 2021 & Recensement) :</strong> 
+                        <ul>
+                            <li><em>Pour l'onglet Bureaux :</em> Les données sociologiques (ouvriers, cadres, etc.) proviennent des IRIS (Ilôts Regroupés pour l'Information Statistique). Comme un bureau de vote chevauche plusieurs IRIS, une clé de répartition au prorata de la population a été appliquée.</li>
+                            <li><em>Pour l'onglet Carreaux :</em> Utilisation de la base <strong>Filosofi 2021</strong>. L'INSEE découpe la France entière en carreaux parfaits de 200m x 200m et y associe les données fiscales réelles (revenu disponible, pauvreté) tout en respectant le secret statistique (données masquées sous 11 ménages).</li>
+                        </ul>
+                    </li>
+                    
+                    <li class="mb-3"><strong>3. Les Contours Géographiques (Etalab / REU) :</strong> Les mairies publient rarement les tracés exacts (fichiers SIG) de leurs bureaux de vote. Les tracés affichés ici sont issus d'une reconstruction mathématique générée par Etalab (la direction des données de l'État). Ils utilisent les adresses postales des électeurs inscrites au Répertoire Électoral Unique (REU) et dessinent des polygones (diagrammes de Voronoï) autour de ces adresses. 
+                    <br><span class="text-warning fw-bold">⚠️ Précaution :</span> Ce tracé est une approximation mathématique de haute précision, mais aux limites d'une rue, une adresse peut basculer d'un côté ou de l'autre de la frontière réelle de la mairie.</li>
                 </ul>
-                <div class="alert alert-warning py-2 small">
-                    <strong>⚠️ Précautions sur la carte :</strong> Bien que ce soit l'outil open-data le plus précis à notre disposition, c'est une approximation. Aux frontières exactes d'un bureau, le tracé peut différer de quelques mètres du découpage strict de la mairie. Cela n'altère en rien la qualité de l'analyse globale d'un quartier.
+
+                <h5 class="fw-bold mt-5 text-danger">🎯 Cap sur les Présidentielles 2027 : Guide Stratégique</h5>
+                <hr>
+                <p>La préparation d'une campagne nationale nécessite de trier les métriques. L'objectif de la stratégie d'Union Populaire n'est pas de convaincre le camp d'en face, mais de mobiliser notre propre camp socio-économique qui a déserté les urnes.</p>
+                
+                <div class="row mt-4 mb-4">
+                    <div class="col-md-6">
+                        <div class="card border-success mb-3 h-100">
+                            <div class="card-header bg-success text-white fw-bold">✅ À Prioriser pour 2027</div>
+                            <div class="card-body">
+                                <ul class="small">
+                                    <li><strong>Socle National (Européennes / Prés.) :</strong> Le score de Manon Aubry représente le socle dur insoumis hors logique de barrage. Les volumes de voix JLM 2022 montrent le plafond atteignable.</li>
+                                    <li><strong>Abstentionnistes (Volume) :</strong> C'est la priorité absolue. C'est dans ce vivier que se trouvent les voix manquantes de l'Union Populaire. Cartographiez les volumes bruts.</li>
+                                    <li><strong>Analyse de classe & Précarité :</strong> Les carreaux 200m montrant une forte concentration de ménages pauvres, d'ouvriers/employés ou de locataires privés sont les cibles prioritaires du porte-à-porte.</li>
+                                    <li><strong>Ciblage Jeunesse (18-39 ans) :</strong> Le cœur du réacteur militant. Zones à privilégier pour l'affichage, les événements festifs et les inscriptions électorales.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-danger mb-3 h-100">
+                            <div class="card-header bg-danger text-white fw-bold">❌ À Ignorer pour 2027</div>
+                            <div class="card-body">
+                                <ul class="small">
+                                    <li><strong>Les résultats Municipaux :</strong> Ils sont biaisés par le clientélisme local et l'ancrage des notables. L'électorat populaire de rupture ne vote souvent pas à la mairie. Prédire 2027 avec les scores locaux n'a aucun sens.</li>
+                                    <li><strong>Le Taux de Rassemblement Gauche (T2 municipal) :</strong> La logique d'union d'appareil au niveau local ne reflète pas la dynamique de vote utile polarisée d'une élection présidentielle.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <h5 class="fw-bold mt-4">📖 Guide Stratégique des Métriques</h5>
-                
-                <div class="accordion mt-3" id="accordionApropos">
+                <h5 class="fw-bold mt-5">📖 Dictionnaire complet des métriques (Historique)</h5>
+                <hr>
+                <div class="accordion mt-3 mb-5" id="accordionApropos">
+                    
                     <div class="accordion-item">
-                        <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUn">🔥 1. Les Gisements Électoraux (Priorité Terrain)</button></h2>
-                        <div id="collapseUn" class="accordion-collapse collapse show" data-bs-parent="#accordionApropos">
+                        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUn">🔥 1. Les Gisements Électoraux</button></h2>
+                        <div id="collapseUn" class="accordion-collapse collapse" data-bs-parent="#accordionApropos">
                             <div class="accordion-body">
-                                <p>Les gisements représentent la réserve de voix potentielle. Ce ne sont pas des pourcentages, mais des volumes physiques d'individus à aller convaincre.</p>
+                                <p>Les gisements représentent la réserve de voix potentielle à aller mobiliser sur le terrain. Ils mesurent la différence entre un vote national fort et un désintérêt local. Il est crucial d'utiliser la bonne métrique selon votre objectif :</p>
+                                
+                                <div class="alert alert-secondary py-2 small mb-3">
+                                    <strong><span class="text-danger">Le Volume Brut (ex: +142 voix) :</span></strong> C'est le nombre réel et physique de personnes à convaincre. <strong>C'est la boussole prioritaire du terrain :</strong> on envoie les militants tracter là où le réservoir de voix est le plus grand en nombre absolu.<br><br>
+                                    <strong><span class="text-primary">Le Volume Normalisé (ex: +11.1%) :</span></strong> C'est cet écart divisé par le nombre d'inscrits du bureau. Il permet de mesurer "l'intensité" insoumise d'un quartier pour comparer de petits et de grands bureaux entre eux.
+                                </div>
+
                                 <ul>
-                                    <li><strong>Différence JLM 2022 / Gauche Locale :</strong> C'est la métrique reine. Un écart positif important indique qu'un grand nombre d'électeurs adhèrent au programme de rupture national, mais refusent de voter pour l'offre locale (par abstention ou désintérêt). C'est ici que l'équipe militante doit concentrer ses efforts.</li>
-                                    <li><strong>Différence NFP 2024 / Gauche Locale :</strong> Cet indicateur montre la dynamique d'union de la gauche la plus récente. Les électeurs qui ont voté NFP pour faire barrage ou par adhésion récente sont une cible privilégiée.</li>
-                                    <li><strong>Nombre d'Abstentionnistes :</strong> Le premier parti des quartiers populaires est souvent l'abstention. Cet indicateur brut permet d'évaluer la rentabilité d'une session de porte-à-porte.</li>
+                                    <li><strong>Différence JLM 2022 / Gauche Locale :</strong> C'est la métrique reine. Un écart positif important indique qu'un grand nombre d'électeurs adhèrent au programme de rupture national, mais refusent de voter pour l'offre locale.</li>
+                                    <li><strong>Différence NFP 2024 / Gauche Locale :</strong> Cet indicateur montre la dynamique d'union de la gauche la plus récente.</li>
+                                    <li><strong>Nombre d'Abstentionnistes :</strong> Le premier parti des quartiers populaires est souvent l'abstention. Identifier les plus gros volumes d'abstentionnistes est la base du porte-à-porte 2027.</li>
                                 </ul>
                             </div>
                         </div>
@@ -176,8 +262,8 @@
                             <div class="accordion-body">
                                 <p>Cette analyse matérialiste permet de situer les bureaux de vote selon les intérêts de classe de leurs habitants.</p>
                                 <ul>
-                                    <li><strong>Taux Ouvriers & Employés (Bloc Populaire) :</strong> Mesure la concentration du Bloc Populaire. Plus le taux est élevé, plus le quartier est sensible aux revendications sociales, aux salaires et aux services publics.</li>
-                                    <li><strong>Taux Cadres & Indépendants (Bloc Dirigeant) :</strong> Identifie les zones de force du Bloc Dirigeant, votant traditionnellement pour la conservation de l'ordre établi (centre-droit).</li>
+                                    <li><strong>Taux Ouvriers & Employés (Bloc Populaire) :</strong> Mesure la concentration du Bloc Populaire. Plus le taux est élevé, plus le quartier est sensible aux revendications sociales.</li>
+                                    <li><strong>Taux Cadres & Indépendants (Bloc Dirigeant) :</strong> Identifie les zones de force du Bloc Dirigeant, votant traditionnellement pour la conservation de l'ordre établi.</li>
                                 </ul>
                             </div>
                         </div>
@@ -189,23 +275,23 @@
                             <div class="accordion-body">
                                 <p>Ces données permettent de repérer les zones où se concentre la population la plus réceptive au programme.</p>
                                 <ul>
-                                    <li><strong>Taux de jeunes (18-39 ans) :</strong> La jeunesse est très sensible à l'écologie et la précarité. Les zones très jeunes doivent être ciblées par des collages spécifiques.</li>
-                                    <li><strong>Familles Monoparentales :</strong> Indicateur fort de besoin en services publics (crèches, cantines gratuites). L'argumentaire doit porter sur la solidarité municipale.</li>
-                                    <li><strong>Locataires du Parc Privé :</strong> Ces habitants subissent l'inflation et la précarité énergétique. L'axe d'intervention sera l'encadrement des loyers.</li>
+                                    <li><strong>Taux de jeunes (18-39 ans) :</strong> La jeunesse est très sensible à l'écologie et la précarité.</li>
+                                    <li><strong>Familles Monoparentales :</strong> Indicateur fort de besoin en services publics (crèches, cantines gratuites).</li>
+                                    <li><strong>Locataires du Parc Privé :</strong> Ces habitants subissent l'inflation et la précarité énergétique.</li>
                                 </ul>
                             </div>
                         </div>
                     </div>
 
                     <div class="accordion-item">
-                        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseQuatre">🗳️ 4. Les Résultats Politiques : 1er et 2nd Tours</button></h2>
+                        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseQuatre">🗳️ 4. Les Résultats Politiques (Historique)</button></h2>
                         <div id="collapseQuatre" class="accordion-collapse collapse" data-bs-parent="#accordionApropos">
                             <div class="accordion-body">
                                 <p>Comparer les deux tours permet de différencier le vote de conviction du vote stratégique.</p>
                                 <ul>
-                                    <li><strong>Le 1er Tour (Le Rapport de Force Pur) :</strong> C'est le "vote de cœur". On y observe la véritable adhésion aux idées d'une liste avant toute logique d'alliance ou de barrage.</li>
+                                    <li><strong>Le 1er Tour (Le Rapport de Force Pur) :</strong> C'est le "vote de cœur". On y observe la véritable adhésion aux idées.</li>
                                     <li><strong>Le 2nd Tour (Alliances et Plafond de Verre) :</strong> Reflète la capacité de rassemblement et le "vote utile".</li>
-                                    <li><strong>Taux de Rassemblement (Gauche au T2) :</strong> Mesure la perméabilité de l'électorat PS vers l'union. Un taux inférieur à 100% indique une déperdition de voix (abstention ou fuite vers le centre) au second tour.</li>
+                                    <li><strong>Taux de Rassemblement (Gauche au T2) :</strong> Mesure la perméabilité de l'électorat PS vers l'union.</li>
                                 </ul>
                             </div>
                         </div>
@@ -213,6 +299,9 @@
                 </div>
 
             </div>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -227,6 +316,7 @@
 
     var geojsonLayer;
     var marker;
+    var legend; 
     var dataBureaux = null;
     var dataCarreaux = null;
     var modeActuel = 'bureaux'; 
@@ -239,7 +329,8 @@
         'Part_Ferrand_T2': 'Purples', 'Part_Guiraud_T2': 'Oranges', 'Part_Cabrolier_T2': 'Blues', 
         'Part_At_T2': 'Blues', 'Taux_Rassemblement_Gauche': 'RdYlGn', 'Ecart_JLM_Norm': 'RdYlGn', 
         'Ecart_NFP_Norm': 'RdYlGn', 'Ecart_JLM_Local': 'YlOrRd', 'Ecart_NFP_Local': 'YlOrRd',
-        'Taux_Pauvrete': 'YlOrRd', 'Taux_Logement_Social': 'Blues', 'Taux_Proprietaires': 'Greens', 'Taux_Familles_Mono': 'Purples'
+        'ind_snv': 'RdYlGn', 'ind': 'YlOrBr', 'men_pauv': 'YlOrRd', 'log_soc': 'Blues', 'men_prop': 'Greens', 'men_fmp': 'Purples',
+        'Part_Aubry_Euro24': 'Purples', 'Voix_JLM_2022': 'YlOrRd', 'Voix_NFP_2024': 'YlOrRd'
     };
 
     fetch('albi_data_final.geojson').then(r => r.json()).then(data => {
@@ -249,18 +340,14 @@
 
     function changerMode(mode) {
         modeActuel = mode;
-        
-        // Boutons des onglets
         document.getElementById('tab-bureaux').classList.toggle('active', mode === 'bureaux');
         document.getElementById('tab-carreaux').classList.toggle('active', mode === 'carreaux');
         document.getElementById('tab-apropos').classList.toggle('active', mode === 'apropos');
         
-        // Panneaux de gauche
-        document.getElementById('panneau-recherche').style.display = (mode === 'bureaux') ? 'block' : 'none';
+        document.getElementById('panneau-recherche').style.display = (mode === 'bureaux' || mode === 'carreaux') ? 'block' : 'none';
         document.getElementById('panneau-info-carreaux').style.display = (mode === 'carreaux') ? 'block' : 'none';
         document.getElementById('panneau-info-apropos').style.display = (mode === 'apropos') ? 'block' : 'none';
 
-        // Zone principale (Droite)
         if(mode === 'apropos') {
             document.getElementById('map').style.display = 'none';
             document.getElementById('conteneur-controles').style.display = 'none';
@@ -286,12 +373,25 @@
         }
     }
 
+    function getDisplayValue(properties, indicateur) {
+        var v = properties[indicateur] || 0;
+        if (modeActuel === 'carreaux' && ['men_pauv', 'log_soc', 'men_prop', 'men_fmp'].includes(indicateur)) {
+            return properties.men > 0 ? (v / properties.men) * 100 : 0;
+        }
+        return v;
+    }
+
     function dessinerCarte() {
         var dataset = (modeActuel === 'bureaux') ? dataBureaux : dataCarreaux;
         if (!dataset) return;
 
         var indicateur = document.getElementById(`select-indicateur-${modeActuel}`).value;
-        var values = dataset.features.map(f => f.properties[indicateur] || 0);
+        
+        var values = dataset.features.map(f => getDisplayValue(f.properties, indicateur))
+                                     .filter(v => typeof v === 'number' && isFinite(v) && v > 0);
+        
+        if(values.length === 0) values = [0, 1]; 
+        
         var min = Math.min(...values);
         var max = Math.max(...values);
         
@@ -302,23 +402,139 @@
 
         geojsonLayer = L.geoJSON(dataset, {
             style: function(feature) {
-                var val = feature.properties[indicateur] || 0;
-                return { fillColor: scale(val).hex(), weight: (modeActuel === 'bureaux') ? 1 : 0.5, opacity: 1, color: (modeActuel === 'bureaux') ? 'white' : '#ccc', fillOpacity: 0.75 };
+                var val = getDisplayValue(feature.properties, indicateur);
+                var isValide = (typeof val === 'number' && isFinite(val) && val > 0);
+                return { 
+                    fillColor: isValide ? scale(val).hex() : '#eeeeee', 
+                    weight: (modeActuel === 'bureaux') ? 1 : 0.2, 
+                    opacity: 1, 
+                    color: (modeActuel === 'bureaux') ? 'white' : '#999999', 
+                    fillOpacity: isValide ? 0.75 : 0.4 
+                };
             },
             onEachFeature: function(feature, layer) {
-                var val = feature.properties[indicateur] || 0;
-                var txt = (modeActuel === 'bureaux') ? "<b>Bureau " + feature.properties.id_jointure + "</b><br>" : "<b>Carreau 200m</b><br>";
-                txt += (indicateur.includes('Nombre') || indicateur.includes('Local')) ? val.toFixed(0) : val.toFixed(1) + "%";
+                var val = getDisplayValue(feature.properties, indicateur);
+                var txt = (modeActuel === 'bureaux') ? "<b>Bureau " + feature.properties.id_jointure + "</b><br>" : "<b>Carreau 200m (2021)</b><br>";
+                
+                if (!isFinite(val) || val === 0) {
+                    txt += "Donnée indisponible";
+                } else if (indicateur === 'ind_snv') {
+                    txt += Math.round(val).toLocaleString() + " € (Médiane)";
+                } else if (indicateur === 'ind' || indicateur === 'Nombre_Abstentionnistes' || indicateur.includes('Local') || indicateur.includes('Voix')) {
+                    txt += Math.round(val).toLocaleString() + (indicateur === 'ind' ? " habitants" : " voix");
+                } else {
+                    txt += val.toFixed(1) + "%";
+                }
                 layer.bindTooltip(txt);
             }
         }).addTo(map);
+
+        if (legend) {
+            map.removeControl(legend);
+        }
+
+        legend = L.control({position: 'bottomright'});
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'info legend');
+            div.innerHTML = '<h6>📊 Échelle</h6>';
+            var step = (max - min) / 5;
+            var grades = [min, min + step, min + step*2, min + step*3, min + step*4, max];
+            
+            for (var i = 0; i < grades.length - 1; i++) {
+                var v1 = grades[i];
+                var v2 = grades[i + 1];
+                
+                if (!isFinite(v1) || !isFinite(v2)) continue; 
+                
+                var label1 = v1.toFixed(1);
+                var label2 = v2.toFixed(1);
+                
+                if (indicateur === 'ind_snv') { 
+                    label1 = Math.round(v1) + '€'; 
+                    label2 = Math.round(v2) + '€'; 
+                }
+                else if (indicateur === 'ind' || indicateur === 'Nombre_Abstentionnistes' || indicateur.includes('Local') || indicateur.includes('Voix')) {
+                    label1 = Math.round(v1); 
+                    label2 = Math.round(v2);
+                } else {
+                    label1 += '%'; 
+                    label2 += '%';
+                }
+
+                var color = scale(v1 + (step/2)).hex(); 
+                div.innerHTML += '<i style="background:' + color + ';"></i> ' + label1 + ' &ndash; ' + label2 + '<br>';
+            }
+
+            // AJOUT DES MOYENNES NATIONALES FILOSOFI (Uniquement pour le mode Carreaux)
+            var natAvg = "";
+            if (modeActuel === 'carreaux') {
+                if (indicateur === 'ind_snv') natAvg = "Moyenne Nat. : 23 160 €";
+                else if (indicateur === 'men_pauv') natAvg = "Moyenne Nat. : 14.5 %";
+                else if (indicateur === 'log_soc') natAvg = "Moyenne Nat. : 15.6 %";
+                else if (indicateur === 'men_prop') natAvg = "Moyenne Nat. : 57.6 %";
+                else if (indicateur === 'men_fmp') natAvg = "Moy. Nat. (ménages) : ~10 %";
+            }
+            
+            // Insertion visuelle élégante sous la légende existante
+            if (natAvg !== "") {
+                div.innerHTML += '<hr style="margin:6px 0; border-color:#ccc;">';
+                div.innerHTML += '<div style="font-size:0.8rem; font-weight:bold; color:#dc3545; text-align:center;">' + natAvg + '</div>';
+            }
+
+            return div;
+        };
+        legend.addTo(map);
     }
 
-    function chercherAdresse() {
-        var adresse = document.getElementById('adresse-input').value;
-        if(!adresse || !dataBureaux) return;
+    // --- AUTOCOMPLÉTION & RECHERCHE D'ADRESSE ---
+    let debounceTimer;
+    document.getElementById('adresse-input').addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        var query = this.value;
+        var suggDiv = document.getElementById('suggestions-adresse');
+        
+        if(query.length < 3) {
+            suggDiv.style.display = 'none';
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            fetch(`https://api-adresse.data.gouv.fr/search/?q=${query} Albi&citycode=81004&limit=5`)
+            .then(res => res.json())
+            .then(data => {
+                suggDiv.innerHTML = '';
+                if(data.features.length > 0) {
+                    data.features.forEach(f => {
+                        var a = document.createElement('a');
+                        a.className = 'list-group-item list-group-item-action small py-1 cursor-pointer';
+                        a.innerText = f.properties.label;
+                        a.onclick = function() {
+                            document.getElementById('adresse-input').value = f.properties.label;
+                            suggDiv.style.display = 'none';
+                            afficherResultat(f.geometry.coordinates, f.properties.label);
+                        };
+                        suggDiv.appendChild(a);
+                    });
+                    suggDiv.style.display = 'block';
+                } else {
+                    suggDiv.style.display = 'none';
+                }
+            });
+        }, 300);
+    });
 
+    document.addEventListener('click', function(e) {
+        if (e.target.id !== 'adresse-input') {
+            document.getElementById('suggestions-adresse').style.display = 'none';
+        }
+    });
+
+    function lancerRechercheManuelle() {
+        var adresse = document.getElementById('adresse-input').value;
+        if(!adresse) return;
+        document.getElementById('suggestions-adresse').style.display = 'none';
         document.getElementById('resultat-adresse').innerHTML = "⏳ Recherche...";
+        
         fetch(`https://api-adresse.data.gouv.fr/search/?q=${adresse} Albi&citycode=81004&limit=1`)
             .then(res => res.json())
             .then(data => {
@@ -326,60 +542,83 @@
                     document.getElementById('resultat-adresse').innerHTML = "❌ Adresse non trouvée.";
                     return;
                 }
-                var coords = data.features[0].geometry.coordinates;
-                var label = data.features[0].properties.label;
-
-                if(marker) map.removeLayer(marker);
-                marker = L.marker([coords[1], coords[0]]).addTo(map).bindPopup(label).openPopup();
-                map.setView([coords[1], coords[0]], 15);
-
-                var pt = turf.point(coords);
-                var bureauTrouve = null;
-                for (var i = 0; i < dataBureaux.features.length; i++) {
-                    if (turf.booleanPointInPolygon(pt, dataBureaux.features[i])) {
-                        bureauTrouve = dataBureaux.features[i].properties;
-                        break;
-                    }
-                }
-
-                if (bureauTrouve) {
-                    document.getElementById('resultat-adresse').innerHTML = "📍 " + label;
-                    document.getElementById('resultats-complets').style.display = "block";
-                    document.getElementById('nom-bureau').innerText = "Bureau " + bureauTrouve.id_jointure + " (" + bureauTrouve.nom_bv + ")";
-                    
-                    var html = `
-                        <tr><td colspan="2" class="section-header">⚙️ Analyse de classe</td></tr>
-                        <tr><td>Ouvriers & Employés</td><td>${(bureauTrouve.Taux_Ouvriers_Employes||0).toFixed(1)}%</td></tr>
-                        <tr><td>Cadres supérieurs</td><td>${(bureauTrouve.Taux_Cadres_Sup||0).toFixed(1)}%</td></tr>
-                        
-                        <tr><td colspan="2" class="section-header">🚪 Mobilisation</td></tr>
-                        <tr><td>Abstentionnistes (Vol.)</td><td>${bureauTrouve.Nombre_Abstentionnistes||0}</td></tr>
-                        <tr><td>Rassemblement Gauche</td><td>${(bureauTrouve.Taux_Rassemblement_Gauche||0).toFixed(1)}%</td></tr>
-                        
-                        <tr><td colspan="2" class="section-header">🔥 Gisements</td></tr>
-                        <tr><td>JLM 2022 (Norm.)</td><td>${(bureauTrouve.Ecart_JLM_Norm||0).toFixed(1)}%</td></tr>
-                        <tr><td>NFP 2024 (Norm.)</td><td>${(bureauTrouve.Ecart_NFP_Norm||0).toFixed(1)}%</td></tr>
-                        
-                        <tr><td colspan="2" class="section-header">🗳️ Résultats 1er Tour</td></tr>
-                        <tr><td>Ferrand-Lefranc</td><td>${(bureauTrouve.Part_Ferrand_T1||0).toFixed(1)}%</td></tr>
-                        <tr><td>Suarez (PS)</td><td>${(bureauTrouve.Part_Suarez_T1||0).toFixed(1)}%</td></tr>
-                        <tr><td>Guiraud-Chaumeil</td><td>${(bureauTrouve.Part_Guiraud_T1||0).toFixed(1)}%</td></tr>
-                        <tr><td>Cabrolier (RN)</td><td>${(bureauTrouve.Part_Cabrolier_T1||0).toFixed(1)}%</td></tr>
-                        <tr><td>At</td><td>${(bureauTrouve.Part_At_T1||0).toFixed(1)}%</td></tr>
-
-                        <tr><td colspan="2" class="section-header">🗳️ Résultats 2nd Tour</td></tr>
-                        <tr><td>Ferrand-Lefranc</td><td>${(bureauTrouve.Part_Ferrand_T2||0).toFixed(1)}%</td></tr>
-                        <tr><td>Guiraud-Chaumeil</td><td>${(bureauTrouve.Part_Guiraud_T2||0).toFixed(1)}%</td></tr>
-                        <tr><td>Cabrolier (RN)</td><td>${(bureauTrouve.Part_Cabrolier_T2||0).toFixed(1)}%</td></tr>
-                        <tr><td>At</td><td>${(bureauTrouve.Part_At_T2||0).toFixed(1)}%</td></tr>
-                    `;
-                    document.getElementById('lignes-tableau').innerHTML = html;
-                } else {
-                    document.getElementById('resultat-adresse').innerHTML = "📍 " + label + " (Hors périmètre)";
-                    document.getElementById('resultats-complets').style.display = "none";
-                }
+                afficherResultat(data.features[0].geometry.coordinates, data.features[0].properties.label);
             });
     }
+
+    function afficherResultat(coords, label) {
+        var targetDataset = (modeActuel === 'bureaux') ? dataBureaux : dataCarreaux;
+        if(!targetDataset) return;
+
+        if(marker) map.removeLayer(marker);
+        marker = L.marker([coords[1], coords[0]]).addTo(map).bindPopup(label).openPopup();
+        map.setView([coords[1], coords[0]], 15);
+
+        var pt = turf.point(coords);
+        var polyTrouve = null;
+        for (var i = 0; i < targetDataset.features.length; i++) {
+            if (turf.booleanPointInPolygon(pt, targetDataset.features[i])) {
+                polyTrouve = targetDataset.features[i].properties;
+                break;
+            }
+        }
+
+        if (polyTrouve) {
+            document.getElementById('resultat-adresse').innerHTML = "📍 " + label;
+            document.getElementById('resultats-complets').style.display = "block";
+            
+            if (modeActuel === 'bureaux') {
+                document.getElementById('nom-bureau').innerText = "Bureau " + polyTrouve.id_jointure + " (" + polyTrouve.nom_bv + ")";
+                var html = `
+                    <tr><td colspan="2" class="section-header">🌍 Socle National</td></tr>
+                    <tr><td>Voix JLM 2022 (Vol.)</td><td>${polyTrouve.Voix_JLM_2022||0} voix</td></tr>
+                    <tr><td>Voix NFP 2024 (Vol.)</td><td>${polyTrouve.Voix_NFP_2024||0} voix</td></tr>
+                    <tr><td>Manon Aubry (Euro 2024)</td><td>${(polyTrouve.Part_Aubry_Euro24||0).toFixed(1)}%</td></tr>
+                    
+                    <tr><td colspan="2" class="section-header">⚙️ Analyse de classe</td></tr>
+                    <tr><td>Ouvriers & Employés</td><td>${(polyTrouve.Taux_Ouvriers_Employes||0).toFixed(1)}%</td></tr>
+                    <tr><td>Cadres supérieurs</td><td>${(polyTrouve.Taux_Cadres_Sup||0).toFixed(1)}%</td></tr>
+                    
+                    <tr><td colspan="2" class="section-header">🚪 Mobilisation</td></tr>
+                    <tr><td>Abstentionnistes (Vol.)</td><td>${polyTrouve.Nombre_Abstentionnistes||0}</td></tr>
+                    
+                    <tr><td colspan="2" class="section-header">🔥 Gisements</td></tr>
+                    <tr><td>JLM 2022 (Norm.)</td><td>${(polyTrouve.Ecart_JLM_Norm||0).toFixed(1)}%</td></tr>
+                    <tr><td>NFP 2024 (Norm.)</td><td>${(polyTrouve.Ecart_NFP_Norm||0).toFixed(1)}%</td></tr>
+                `;
+                document.getElementById('lignes-tableau').innerHTML = html;
+            } else {
+                document.getElementById('nom-bureau').innerText = "Carreau INSEE 200m";
+                var p = polyTrouve;
+                var pauvrete = p.men > 0 ? ((p.men_pauv/p.men)*100).toFixed(1) : 0;
+                var logSoc = p.men > 0 ? ((p.log_soc/p.men)*100).toFixed(1) : 0;
+                var fmp = p.men > 0 ? ((p.men_fmp/p.men)*100).toFixed(1) : 0;
+                var locPrives = p.men > 0 ? (((p.men - p.men_prop - p.log_soc)/p.men)*100).toFixed(1) : 0;
+                
+                var html = `
+                    <tr><td colspan="2" class="section-header">👥 Population & Richesse</td></tr>
+                    <tr><td>Population Totale</td><td>${Math.round(p.ind || 0)} hab.</td></tr>
+                    <tr><td>Niveau de vie médian</td><td>${p.ind_snv > 0 ? Math.round(p.ind_snv).toLocaleString() + ' €' : 'Secret stat.'}</td></tr>
+                    <tr><td colspan="2" class="section-header">🏠 Logement & Précarité</td></tr>
+                    <tr><td>Ménages pauvres</td><td>${pauvrete}%</td></tr>
+                    <tr><td>Logements sociaux</td><td>${logSoc}%</td></tr>
+                    <tr><td>Parc locatif privé (est.)</td><td>${locPrives}%</td></tr>
+                    <tr><td>Familles Monoparentales</td><td>${fmp}%</td></tr>
+                `;
+                document.getElementById('lignes-tableau').innerHTML = html;
+            }
+        } else {
+            document.getElementById('resultat-adresse').innerHTML = "📍 " + label + " (Hors périmètre)";
+            document.getElementById('resultats-complets').style.display = "none";
+        }
+    }
+
+    document.getElementById("adresse-input").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            lancerRechercheManuelle();
+        }
+    });
 </script>
 </body>
 </html>
